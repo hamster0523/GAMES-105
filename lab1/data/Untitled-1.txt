@@ -1,0 +1,60 @@
+[['ROOT', 'Hips'],  -> 创建节点并入元素栈 id = 0
+ ['{'], -> 不管
+ ['OFFSET', '0.00', '0.00', '0.00'], -> OFFSET 栈入栈
+ ['CHANNELS', -> CHANNELS 栈入栈
+  '6',
+  'Xposition',
+  'Yposition',
+  'Zposition',
+  'Xrotation',
+  'Yrotation',
+  'Zrotation'],
+ ['JOINT', 'LeftUpLeg'], -> 创建节点并入元素栈 id = 1
+ ['{'], -> 不管
+ ['OFFSET', '3.64953', '0.00000', '0.00000'], -> OFFSET 栈入栈
+ ['CHANNELS', '3', 'Xrotation', 'Yrotation', 'Zrotation'], -> CHANNELS 栈入栈
+ ['JOINT', 'LeftLeg'],  -> 创建节点并入栈 id = 2
+ ['{'], -> 不管
+ ['OFFSET', '0.00000', '-15.70580', '0.00000'], -> OFFSET 栈入栈
+ ['CHANNELS', '3', 'Xrotation', 'Yrotation', 'Zrotation'], -> CHANNELS 栈入栈
+ ['JOINT', 'LeftFoot'], -> 创建节点并入栈 id = 3
+ ['{'], -> 不管
+ ['OFFSET', '0.00000', '-15.41867', '0.00000'], -> OFFSET 栈入栈
+ ['CHANNELS', '3', 'Xrotation', 'Yrotation', 'Zrotation'], -> CHANNELS 栈入栈
+ ['JOINT', 'LeftToeBase'], -> 创建节点并入栈 id = 4
+ ['{'], -> 不管
+ ['OFFSET', '0.00000', '-1.53543', '5.73033'], -> OFFSET 栈入栈
+ ['CHANNELS', '3', 'Xrotation', 'Yrotation', 'Zrotation'], -> CHANNELS 栈入栈
+ ['End', 'Site'], -> 创建节点并入栈 id = 5
+ ['{'], -> 不管
+ ['OFFSET', '0.00000', '0.00000', '2.95275'], -> OFFSET 栈入栈
+ ['}'], -> 元素栈顶出栈 : 是一个End 节点5 -> OFFSET 栈顶出栈为 元素栈顶元素赋值 -> 没有孩子
+ ['}'], -> 元素栈顶出栈 : 是一个JOINT 节点4 -> OFFSET 栈顶出栈为 元素栈顶元素赋值 -> CHANNELS 栈顶出栈为 元素栈顶元素赋值 
+ ['}'], -> 元素栈顶出栈 : 是一个JOINT 节点3 -> OFFSET 栈顶出栈为 元素栈顶元素赋值 -> CHANNELS 栈顶出栈为 元素栈顶元素赋值 
+ ['}'], -> 元素栈顶出栈 : 是一个JOINT 节点2 -> OFFSET 栈顶出栈为 元素栈顶元素赋值 -> CHANNELS 栈顶出栈为 元素栈顶元素赋值 
+ ['}'], -> 元素栈顶出栈 : 是一个JOINT 节点1 -> OFFSET 栈顶出栈为 元素栈顶元素赋值 -> CHANNELS 栈顶出栈为 元素栈顶元素赋值 
+ ['JOINT', 'RightUpLeg'], -> 创建节点并入栈 id = 6
+ ['{'], -> 不管
+ ['OFFSET', '-3.64953', '0.00000', '0.00000'], -> OFFSET 栈入栈
+ ['CHANNELS', '3', 'Xrotation', 'Yrotation', 'Zrotation'], -> CHANNELS 栈入栈
+ ['JOINT', 'RightLeg'], -> 创建节点并入栈 id = 7
+ ['{'], -> 不管
+ ['OFFSET', '0.00000', '-15.70580', '0.00000'], -> OFFSET 栈入栈
+ ['CHANNELS', '3', 'Xrotation', 'Yrotation', 'Zrotation'], -> CHANNELS 栈入栈
+ ['JOINT', 'RightFoot'], -> 创建节点并入栈 id = 8
+ ['{'], -> 不管
+ ['OFFSET', '0.00000', '-15.41867', '0.00000'], -> OFFSET 栈入栈
+ ['CHANNELS', '3', 'Xrotation', 'Yrotation', 'Zrotation'], -> CHANNELS 栈入栈
+ ['JOINT', 'RightToeBase'], -> 创建节点并入栈 id = 9
+ ['{'], -> 不管
+ ['OFFSET', '0.00000', '-1.53543', '5.73033'], -> OFFSET 栈入栈
+ ['CHANNELS', '3', 'Xrotation', 'Yrotation', 'Zrotation'], -> CHANNELS 栈入栈
+ ['End', 'Site'], -> 创建节点并入栈 id = 10
+ ['{'], -> 不管
+ ['OFFSET', '0.00000', '0.00000', '2.95275'], -> OFFSET 栈入栈
+ ['}'], -> 元素栈顶出栈 : 是一个End 节点10 -> OFFSET 栈顶出栈为 元素栈顶元素赋值 -> 没有孩子
+ ['}'], -> 元素栈顶出栈 : 是一个JOINT 节点9 -> OFFSET 栈顶出栈为 元素栈顶元素赋值 -> CHANNELS 栈顶出栈为 元素栈顶元素赋值 -> 9的孩子是已经出栈的全部节点(不对) , 9的父亲是所有还在栈中节点
+ ['}'], -> 元素栈顶出栈 : 是一个JOINT 节点8 -> OFFSET 栈顶出栈为 元素栈顶元素赋值 -> CHANNELS 栈顶出栈为 元素栈顶元素赋值
+ ['}'], -> 元素栈顶出栈 : 是一个JOINT 节点7 -> OFFSET 栈顶出栈为 元素栈顶元素赋值 -> CHANNELS 栈顶出栈为 元素栈顶元素赋值
+ ['}'], -> 元素栈顶出栈 : 是一个JOINT 节点6 -> OFFSET 栈顶出栈为 元素栈顶元素赋值 -> CHANNELS 栈顶出栈为 元素栈顶元素赋值
+ ['}']] -> 元素栈顶出栈 : 是一个ROOT 节点5  -> OFFSET 栈顶出栈为 元素栈顶元素赋值 -> CHANNELS 栈顶出栈为 元素栈顶元素赋值 -> 没有父亲

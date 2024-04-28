@@ -3,7 +3,7 @@
 ## 任务零  环境配置
 
 ### 1. 安装panda3d(Windows/Linux/Mac)
-   
+
 建议使用conda等建立新的虚拟环境
 ```bash
 conda create -n games105 python=3.8
