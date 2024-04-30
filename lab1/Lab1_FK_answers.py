@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+from BVH_Reader import Bone_Tree
 
 def load_motion_data(bvh_file_path):
     """part2 辅助函数，读取bvh文件"""
@@ -30,9 +31,10 @@ def part1_calculate_T_pose(bvh_file_path):
     Tips:
         joint_name顺序应该和bvh一致
     """
-    joint_name = None
-    joint_parent = None
-    joint_offset = None
+    Tree = Bone_Tree(bvh_file_path)
+    joint_name = Tree.joint_name
+    joint_parent = Tree.parent_name
+    joint_offset = Tree.joint_offset
     return joint_name, joint_parent, joint_offset
 
 
