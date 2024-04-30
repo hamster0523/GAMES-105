@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from collections import deque
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 
 
 @dataclass
@@ -219,6 +220,73 @@ class Bone_Tree:
                 if joint.ID == i:
                     new_joint_list.append(joint)
         return new_joint_list
+
+    def forward_kinematics(
+        self,
+        joint_list: list,
+        joint_name: list,
+        joint_parent: list,
+        joint_offset: np.array,
+        motion_data: list,
+    ) -> np.array:
+        # Q4 = Q3R4 = Q2R3R4 = Q1R2R3R4 = Q0R1R2R3R4 = R0R1R2R3R4
+        # DP 累推
+        # return : joint_position : shape -> num_frames * num_joint * 3
+        # return : joint_rotation : shape -> num_frames * num_joint * 4 (quaternion)
+        joint_all_position_local_world = []
+        joint_all_rotation_quat = []
+        for frame in motion_data:
+            # Q : this_frame joint_rotation -> shape : num_joint * 4
+            # L : this_frame joint_position -> shape : num_joint * 3
+            Q = []
+            # Only root joint has translation
+            T0 = None
+            L = []
+            # joint_list is sorted by ID : the sequence follow the bvh hierarchy
+            for joint in joint_list:
+                if joint.type == "root":
+                    # root channels is 6 : first 3 is translate , second 3 is rotation
+                    translate = frame[:3]
+                    rotation = frame[3:6]
+                    # translate_euler = R.from_euler('XYZ', translate, degrees=True)
+                    T0 = np.array(translate)
+                    rotation_euler = R.from_euler("XYZ", rotation, degrees=True)
+                    rotation_quaternion = rotation_euler.as_quat()
+                    # root's location is (0,0,0)
+                    Q.append(rotation_quaternion)
+                    L.append(np.array([0, 0, 0]))
+                else:
+                    joint_index = joint.ID - 1
+                    parent_index = joint.parent["parent_id"]
+                    joint_rotation = frame[
+                        6 + joint_index * 3 : 6 + joint_index * 3 + 3
+                    ]
+                    # parent_roation is quaternion
+                    parent_rotation = Q[parent_index]
+                    this_joint_rotation = R.from_matrix(
+                        R.from_quat(parent_rotation).as_matrix()
+                        @ R.from_euler("XYZ", joint_rotation, degrees=True).as_matrix()
+                    ).as_quat()
+                    Q.append(this_joint_rotation)
+                    # parent_location is np.array -> 3 dim vec
+                    parent_location = L[parent_index]
+                    # joint_offset is np.array -> 3 dim vec
+                    joint_offset = joint.offset
+                    # ID == 1 -> need translate
+                    if joint.ID == 1:
+                        this_joint_location = (
+                            parent_location
+                            + this_joint_location.apply(joint_offset)
+                            + T0
+                        )
+                    else:
+                        this_joint_location = (
+                            parent_location + this_joint_location.apply(joint_offset)
+                        )
+                    L.append(this_joint_location)
+            joint_all_position_local_world.append(L)
+            joint_all_rotation_quat.append(Q)
+        return joint_all_position_local_world, joint_all_rotation_quat
 
 
 def __main__():
