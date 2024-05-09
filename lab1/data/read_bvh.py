@@ -30,6 +30,7 @@ class Bone_Tree:
         self.sorted_joint_list = self.sort_primary_joint_list(self.joint_List)
         self.channels = self.process_channels(self.all_channels)
         self.joint_name = self.process_joint_name(self.sorted_joint_list)
+        self.joint_name_without_end = self.process_joint_name_without_end(self.sorted_joint_list)
         self.joint_offset = np.array(self.process_joint_offset(self.sorted_joint_list))
         self.joint_parent = self.process_joint_parent(self.sorted_joint_list)
         self.all_frame_rotation_location_dic = self.forward_kinematics(
@@ -216,6 +217,14 @@ class Bone_Tree:
         for joint in joint_list:
             name_list.append(joint.name)
         return name_list
+    
+    def process_joint_name_without_end(self, sorted_joint_list):
+        name_list = []
+        for joint in sorted_joint_list:
+            if joint.type == 'End':
+                continue
+            name_list.append(joint.name)
+        return name_list
 
     def process_joint_offset(self, joint_list):
         joint_offset_list = []
@@ -371,6 +380,24 @@ class Bone_Tree:
                 one_frame_location.append(joint["location"].tolist())
             all_frames_location.append(one_frame_location)
         return all_frames_location
+    
+    def process_A_pos_frame(self, A_pos_frame : list, T_pos_joint_name_without_end : list, A_pos_joint_name_without_end : list) -> list:
+        # input : every frame in A_pos and T pos joint name 
+        new_frame_info = []
+        for A_pos_every_frame in A_pos_frame:
+            new_A_pos_every_frame = []
+            new_A_pos_every_frame.append(A_pos_every_frame[0 : 3])
+            for T_pos_every_joint_name in T_pos_joint_name_without_end:
+                print(T_pos_every_joint_name)
+                this_T_pos_joint_name = T_pos_every_joint_name
+                index_in_A_pos_name = A_pos_joint_name_without_end.index(this_T_pos_joint_name)
+                print(index_in_A_pos_name)
+                # index this frame rotation
+                this_joint_A_pos_rotation = A_pos_every_frame[3 + index_in_A_pos_name * 3 : 6 + index_in_A_pos_name * 3]
+                new_A_pos_every_frame.append(this_joint_A_pos_rotation)
+            new_frame_info.append(new_A_pos_every_frame)
+        new_frame_info = np.array(new_frame_info).reshape(-1, 63).tolist()
+        return new_frame_info
 
 
 def __main__():
