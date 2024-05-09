@@ -35,12 +35,12 @@ class Bone_Tree:
         self.all_frame_rotation_location_dic = self.forward_kinematics(
             self.sorted_joint_list, self.frames
         )
-        self.all_frame_rotation = self.Process_all_frames_rotation(
+        self.all_frame_rotation = np.array(self.Process_all_frames_rotation(
             self.all_frame_rotation_location_dic
-        )
-        self.all_frame_location = self.Process_all_frames_location(
+        ))
+        self.all_frame_location = np.array(self.Process_all_frames_location(
             self.all_frame_rotation_location_dic
-        )
+        ))
 
     def read_bvh(self, file_path) -> None:
         bvh_data = []
@@ -336,11 +336,19 @@ class Bone_Tree:
                     this_joint_location = parent_location + R.from_quat(
                         parent_rotation
                     ).apply(np.array(this_offset))
+                    #Q.append(
+                    #    {
+                    #        "id": joint.ID,
+                    #        "rotation": None,
+                    #        "location": this_joint_location,
+                    #    }
+                    #)
+                    # set all end joint's rotation is the rotation of parent joint
                     Q.append(
                         {
-                            "id": joint.ID,
-                            "rotation": None,
-                            "location": this_joint_location,
+                        "id" : joint.ID,
+                        "rotation" : parent_rotation,
+                        "location" : this_joint_location
                         }
                     )
             joint_all_frames_info_rotation_local.append(Q)
@@ -351,7 +359,7 @@ class Bone_Tree:
         for frame in joint_all_frames_info_rotation_location:
             one_frame_roation = []
             for joint in frame:
-                one_frame_roation.append(joint["rotation"])
+                one_frame_roation.append(joint["rotation"].tolist())
             all_frames_rotation.append(one_frame_roation)
         return all_frames_rotation
 
@@ -360,7 +368,7 @@ class Bone_Tree:
         for frame in joint_all_frames_info_rotation_location:
             one_frame_location = []
             for joint in frame:
-                one_frame_location.append(joint["location"])
+                one_frame_location.append(joint["location"].tolist())
             all_frames_location.append(one_frame_location)
         return all_frames_location
 

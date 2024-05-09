@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from collections import deque
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 
 
 @dataclass
@@ -11,6 +12,7 @@ class Node:
     child: list
     parent: dict
     ID: int
+    channel_index: int
     type: str
 
 
@@ -30,6 +32,15 @@ class Bone_Tree:
         self.joint_name = self.process_joint_name(self.sorted_joint_list)
         self.joint_offset = np.array(self.process_joint_offset(self.sorted_joint_list))
         self.joint_parent = self.process_joint_parent(self.sorted_joint_list)
+        self.all_frame_rotation_location_dic = self.forward_kinematics(
+            self.sorted_joint_list, self.frames
+        )
+        self.all_frame_rotation = np.array(self.Process_all_frames_rotation(
+            self.all_frame_rotation_location_dic
+        ))
+        self.all_frame_location = np.array(self.Process_all_frames_location(
+            self.all_frame_rotation_location_dic
+        ))
 
     def read_bvh(self, file_path) -> None:
         bvh_data = []
@@ -80,6 +91,7 @@ class Bone_Tree:
         node_stack = deque()
         joint_List = []
         node_id = 0
+        channel_index = 0
 
         for info in info_List:
             if info[0] == "ROOT":
@@ -91,9 +103,11 @@ class Bone_Tree:
                         child=[],
                         parent=None,
                         ID=node_id,
+                        channel_index=channel_index,
                         type="root",
                     )
                 )
+                channel_index += 6
                 node_id += 1
                 continue
             elif info[0] == "{":
@@ -116,10 +130,12 @@ class Bone_Tree:
                         child=[],
                         parent=None,
                         ID=node_id,
+                        channel_index=channel_index,
                         type="joint",
                     )
                 )
                 node_id += 1
+                channel_index += 3
                 continue
             elif info[0] == "End":
                 node_stack.append(
@@ -131,6 +147,7 @@ class Bone_Tree:
                         child=None,
                         type="End",
                         ID=node_id,
+                        channel_index=None,
                     )
                 )
                 node_id += 1
@@ -219,6 +236,141 @@ class Bone_Tree:
                 if joint.ID == i:
                     new_joint_list.append(joint)
         return new_joint_list
+
+    def find_parent_rotation(self, Q, parent_index):
+        for joint in Q:
+            if joint["id"] == parent_index:
+                return joint["rotation"]
+
+    def find_parent_location(self, Q, parent_index):
+        for joint in Q:
+            if joint["id"] == parent_index:
+                return joint["location"]
+
+    def forward_kinematics(
+        self,
+        joint_list: list,
+        motion_data: list,
+    ) -> list:
+        # Q4 = Q3R4 = Q2R3R4 = Q1R2R3R4 = Q0R1R2R3R4 = R0R1R2R3R4
+        # DP accumulate
+        # joint_all_frames_info_rotation_local : shape -> num_frames * num_joint
+        joint_all_frames_info_rotation_local = []
+        for frame in motion_data:
+            # Q : return list of dict in this frame
+            # each dict contains id, rotation accumulate from root to this joint
+            #                        location of this join
+            # Q's id length is num_joint
+            # Q's rotation shape is (num_joint, 4)
+            # Q's location shape is (num_joint, 3)
+            Q = []
+            # Only root joint has translation
+            T0 = None
+            # joint_list is sorted by ID : the sequence follow the bvh hierarchy
+            for joint in joint_list:
+                if joint.type == "root":
+                    # root channels is 6 : first 3 is translate , second 3 is rotation
+                    translate = frame[:3]
+                    rotation = frame[3:6]
+                    # translate_euler = R.from_euler('XYZ', translate, degrees=True)
+                    T0 = np.array(translate)
+                    rotation_euler = R.from_euler("XYZ", rotation, degrees=True)
+                    rotation_quaternion = rotation_euler.as_quat()
+                    # root's location is (0,0,0)
+                    Q.append(
+                        {
+                            "id": 0,
+                            "rotation": rotation_quaternion,
+                            "location": np.array([0, 0, 0]),
+                        }
+                    )
+                elif joint.type == "joint":
+                    joint_index = joint.ID - 1
+                    parent_index = joint.parent["parent_id"]
+                    joint_rotation = frame[
+                        joint.channel_index : joint.channel_index + 3
+                    ]
+                    # print(joint.ID)
+                    # print(joint_index)
+                    joint_rotation = np.array(list(map(float, joint_rotation)))
+                    # parent_roation is quaternion
+                    parent_rotation = self.find_parent_rotation(Q, parent_index)
+                    # print(joint_rotation)
+                    # print(type(joint_rotation))
+                    # print(R.from_euler("xyz", joint_rotation, degrees=True))
+                    # print(R.from_euler("xyz", joint_rotation, degrees=True).as_matrix())
+                    this_joint_rotation = R.from_matrix(
+                        R.from_quat(parent_rotation).as_matrix()
+                        @ R.from_euler("xyz", joint_rotation, degrees=True).as_matrix()
+                    ).as_quat()
+                    # print(this_joint_rotation)
+                    # print("--------------")
+                    # parent_location is np.array -> 3 dim vec
+                    parent_location = self.find_parent_location(Q, parent_index)
+                    # joint_offset is np.array -> 3 dim vec
+                    joint_offset = joint.offset
+                    # ID == 1 -> need translate
+                    if joint.ID == 1:
+                        T0 = list(map(float, T0))
+                        this_joint_location = (
+                            parent_location
+                            + R.from_quat(parent_rotation).apply(np.array(joint_offset))
+                            + T0
+                        )
+                    else:
+                        this_joint_location = parent_location + R.from_quat(
+                            parent_rotation
+                        ).apply(np.array(joint_offset))
+                    Q.append(
+                        {
+                            "id": joint.ID,
+                            "rotation": this_joint_rotation,
+                            "location": this_joint_location,
+                        }
+                    )
+                elif joint.type == "End":
+                    parent_index = joint.parent["parent_id"]
+                    parent_rotation = self.find_parent_rotation(Q, parent_index)
+                    parent_location = self.find_parent_location(Q, parent_index)
+                    this_offset = joint.offset
+                    this_joint_location = parent_location + R.from_quat(
+                        parent_rotation
+                    ).apply(np.array(this_offset))
+                    #Q.append(
+                    #    {
+                    #        "id": joint.ID,
+                    #        "rotation": None,
+                    #        "location": this_joint_location,
+                    #    }
+                    #)
+                    # set all end joint's rotation is the rotation of parent joint
+                    Q.append(
+                        {
+                        "id" : joint.ID,
+                        "rotation" : parent_rotation,
+                        "location" : this_joint_location
+                        }
+                    )
+            joint_all_frames_info_rotation_local.append(Q)
+        return joint_all_frames_info_rotation_local
+
+    def Process_all_frames_rotation(self, joint_all_frames_info_rotation_location):
+        all_frames_rotation = []
+        for frame in joint_all_frames_info_rotation_location:
+            one_frame_roation = []
+            for joint in frame:
+                one_frame_roation.append(joint["rotation"].tolist())
+            all_frames_rotation.append(one_frame_roation)
+        return all_frames_rotation
+
+    def Process_all_frames_location(self, joint_all_frames_info_rotation_location):
+        all_frames_location = []
+        for frame in joint_all_frames_info_rotation_location:
+            one_frame_location = []
+            for joint in frame:
+                one_frame_location.append(joint["location"].tolist())
+            all_frames_location.append(one_frame_location)
+        return all_frames_location
 
 
 def __main__():

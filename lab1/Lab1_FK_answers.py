@@ -4,20 +4,19 @@ from BVH_Reader import Bone_Tree
 
 def load_motion_data(bvh_file_path):
     """part2 辅助函数，读取bvh文件"""
-    with open(bvh_file_path, 'r') as f:
+    with open(bvh_file_path, "r") as f:
         lines = f.readlines()
         for i in range(len(lines)):
-            if lines[i].startswith('Frame Time'):
+            if lines[i].startswith("Frame Time"):
                 break
         motion_data = []
-        for line in lines[i+1:]:
+        for line in lines[i + 1 :]:
             data = [float(x) for x in line.split()]
             if len(data) == 0:
                 break
-            motion_data.append(np.array(data).reshape(1,-1))
+            motion_data.append(np.array(data).reshape(1, -1))
         motion_data = np.concatenate(motion_data, axis=0)
     return motion_data
-
 
 
 def part1_calculate_T_pose(bvh_file_path):
@@ -38,7 +37,9 @@ def part1_calculate_T_pose(bvh_file_path):
     return joint_name, joint_parent, joint_offset
 
 
-def part2_forward_kinematics(joint_name, joint_parent, joint_offset, motion_data, frame_id):
+def part2_forward_kinematics(
+    joint_name, joint_parent, joint_offset, motion_data, frame_id
+):
     """请填写以下内容
     输入: part1 获得的关节名字，父节点列表，偏移量列表
         motion_data: np.ndarray，形状为(N,X)的numpy数组，其中N为帧数，X为Channel数
@@ -50,8 +51,12 @@ def part2_forward_kinematics(joint_name, joint_parent, joint_offset, motion_data
         1. joint_orientations的四元数顺序为(x, y, z, w)
         2. from_euler时注意使用大写的XYZ
     """
-    joint_positions = None
-    joint_orientations = None
+    bvh_file_path = "./data/walk60.bvh"
+    Tree = Bone_Tree(bvh_file_path)
+    # all_frame_location.shape : (num_frame, num_joint, 3)
+    # all_frame_orientation.shape : (num_frame, num_joint, 4)
+    joint_positions = Tree.all_frame_location[frame_id]
+    joint_orientations = Tree.all_frame_orientation[frame_id]
     return joint_positions, joint_orientations
 
 
@@ -59,7 +64,7 @@ def part3_retarget_func(T_pose_bvh_path, A_pose_bvh_path):
     """
     将 A-pose的bvh重定向到T-pose上
     输入: 两个bvh文件的路径
-    输出: 
+    输出:
         motion_data: np.ndarray，形状为(N,X)的numpy数组，其中N为帧数，X为Channel数。retarget后的运动数据
     Tips:
         两个bvh的joint name顺序可能不一致哦(
