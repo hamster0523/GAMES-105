@@ -381,6 +381,7 @@ class Bone_Tree:
             all_frames_location.append(one_frame_location)
         return all_frames_location
     
+    # target : process A pos frame which goal is the joint name in A pos and T pos is the same sequence
     def process_A_pos_frame(self, A_pos_frame : list, T_pos_joint_name_without_end : list, A_pos_joint_name_without_end : list) -> list:
         # input : every frame in A_pos and T pos joint name 
         new_frame_info = []
@@ -401,37 +402,40 @@ class Bone_Tree:
         new_frame_info = np.array(new_frame_info).reshape(-1, one_frame_info_len).tolist()
         return new_frame_info
     
-    def calculate_Q_matrix(A_pos_frame : list, T_pos_frame : list, joint_name : list) -> list:
+    # target : calculate all Q matrix : which is global orientation offset : transform T pos to A pos
+    def calculate_Q_matrix(self, A_pos_frame : list, T_pos_frame : list, joint_name : list) -> list:
         Q_matrix_all_frame = [] # -> dict : {joint_name : Q_matrix} -> shape:(num_frames, num_joints)
         for A_pos_frame_this, T_pos_frame_this in zip(A_pos_frame, T_pos_frame):
             Q_matrix_this_frame = []
+            # print(joint_name)
             for idx, joint in enumerate(joint_name):
-                joint_name = joint
                 A_pos_rotation = A_pos_frame_this[3 + idx * 3 : 6 + idx * 3]
                 # print("A_pos_rotation : ", A_pos_rotation)
                 T_pos_rotation = T_pos_frame_this[3 + idx * 3 : 6 + idx * 3]
                 # print("T_pos_rotation : ", T_pos_rotation)
                 A_rotation_matrix = R.from_euler("XYZ", A_pos_rotation, degrees = True)
-                print("A_rotation_matrix : ", A_rotation_matrix.as_matrix())
+                # print("A_rotation_matrix : ", A_rotation_matrix.as_matrix())
                 T_rotation_matrix = R.from_euler("XYZ", T_pos_rotation, degrees = True)
-                print("T_rotation_matrix : ", T_rotation_matrix.as_matrix())
+                # print("T_rotation_matrix : ", T_rotation_matrix.as_matrix())
                 # target_matrix * T_rotation_matrix = A_rotation_matrix
                 # so -> target_matrix = A_rotation_matrix * T_rotation_matrix.inv()
                 Q_this_joint = A_rotation_matrix * T_rotation_matrix.inv()
                 Q_matrix_this_frame.append(
                     {
-                        "joint_name" : joint_name,
+                        "joint_name" : joint,
                         "Q_matrix" : Q_this_joint
                     }
                 )
             Q_matrix_all_frame.append(Q_matrix_this_frame)
         return Q_matrix_all_frame
     
+    # depend on parent_name to find parent_Q_matrix
     def find_node(self, node_list : list, joint_name : str):
         for node in node_list:
             if(node.name == joint_name):
                 return node
 
+    # depende on joint_name to find this_joint_Q_matrix
     def find_Q(self, Q_matrix : list , joint_name : str):
         for Q in Q_matrix:
             if(Q['joint_name'] == joint_name):
@@ -439,7 +443,7 @@ class Bone_Tree:
 
     # for root node -> Rotation_in_A_pos = Rotation_in_T_pos * Q(from_T_pos_to_A_pos)^T
     # for none root node -> Rotation_in_A_pos = Q(parent_from_T_pos_to_A_pos) * Rotation_in_T_pos * Q(this_joint_from_T_pos_to_A_pos)
-
+    # target : retargeting motion from A pos to T pos
     def motion_retarget(self, Q_matrix : list, T_pos_all_frames : list, node_list_in_A_pos : list, node_list_in_T_pos : list) -> list:
         # input : rotation_in_A_pos_all_frames,
         #         tranformation_matrix_from_T_pos_to_A_pos
@@ -448,25 +452,34 @@ class Bone_Tree:
         all_frame_new_rotation_in_T_pos = []
         for idx, T_pos_frame in enumerate(T_pos_all_frames):
             this_T_pos_frame = T_pos_frame
-            this_frame_all_Q_matrix = Q_matrix[idx]
+            # print(this_T_pos_frame)
+            # print(idx)
+            # print(Q_matrix)
+            this_frame_all_Q_matrix = Q_matrix[int(idx)]
+            # print(this_frame_all_Q_matrix)
             this_frame_new_rotation_in_T_pos = []
-            for idx_joint, Q_matrix in enumerate(this_frame_all_Q_matrix):
-                joint_name = Q_matrix['joint_name']
-                Q_matrix_this_joint = Q_matrix['Q_matrix']
+            for idx_joint, one_Q_matrix in enumerate(this_frame_all_Q_matrix):
+                joint_name = one_Q_matrix['joint_name']
+                Q_matrix_this_joint = one_Q_matrix['Q_matrix']
                 this_joint_rotation_in_T_pos = this_T_pos_frame[3 + 3 * idx_joint : 6 + 3 * idx_joint]
                 joint_node_in_A_pos = self.find_node(node_list_in_A_pos, joint_name)
                 joint_parent_name = joint_node_in_A_pos.parent['parent_name'] 
                 parent_Q_matrix = self.find_Q(this_frame_all_Q_matrix, joint_parent_name)
                 if(joint_node_in_A_pos.type == 'root'):
                     # this is a root node
-                    B_rotation = this_joint_rotation_in_T_pos * Q_matrix_this_joint.T
-                    this_frame_new_rotation_in_T_pos.append(B_rotation)
+                    # print("this_joint_rotation_in_T_pos: ", this_joint_rotation_in_T_pos)
+                    # print("Q_matrix_this_joint: ", Q_matrix_this_joint.as_matrix())
+                    # add T_pos translation to the new_frame_info
+                    this_frame_new_rotation_in_T_pos.append(this_T_pos_frame[0 : 3])
+                    B_rotation = R.from_euler("XYZ", this_joint_rotation_in_T_pos, degrees = True).as_matrix() * Q_matrix_this_joint.as_matrix().transpose()
+                    this_frame_new_rotation_in_T_pos.append(R.from_matrix(B_rotation).as_euler("XYZ", degrees = True).tolist())
                     continue
                 else:
-                    B_rotation = parent_Q_matrix * this_joint_rotation_in_T_pos * Q_matrix_this_joint.T
-                    this_frame_new_rotation_in_T_pos.append(B_rotation)
-            all_frame_new_rotation_in_T_pos.append(this_frame_new_rotation_in_T_pos) 
-        return all_frame_new_rotation_in_T_pos
+                    B_rotation = parent_Q_matrix.as_matrix() * R.from_euler("XYZ", this_joint_rotation_in_T_pos, degrees = True).as_matrix() * Q_matrix_this_joint.as_matrix().transpose()
+                    this_frame_new_rotation_in_T_pos.append(R.from_matrix(B_rotation).as_euler("XYZ", degrees = True).tolist())
+            all_frame_new_rotation_in_T_pos.append(np.array(this_frame_new_rotation_in_T_pos).reshape(-1, len(this_T_pos_frame)).tolist()) 
+        return np.array(all_frame_new_rotation_in_T_pos).squeeze().tolist()
+                     
 
 
 def __main__():
