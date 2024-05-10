@@ -400,6 +400,73 @@ class Bone_Tree:
         one_frame_info_len = len(T_pos_joint_name_without_end) * 3 + 3
         new_frame_info = np.array(new_frame_info).reshape(-1, one_frame_info_len).tolist()
         return new_frame_info
+    
+    def calculate_Q_matrix(A_pos_frame : list, T_pos_frame : list, joint_name : list) -> list:
+        Q_matrix_all_frame = [] # -> dict : {joint_name : Q_matrix} -> shape:(num_frames, num_joints)
+        for A_pos_frame_this, T_pos_frame_this in zip(A_pos_frame, T_pos_frame):
+            Q_matrix_this_frame = []
+            for idx, joint in enumerate(joint_name):
+                joint_name = joint
+                A_pos_rotation = A_pos_frame_this[3 + idx * 3 : 6 + idx * 3]
+                # print("A_pos_rotation : ", A_pos_rotation)
+                T_pos_rotation = T_pos_frame_this[3 + idx * 3 : 6 + idx * 3]
+                # print("T_pos_rotation : ", T_pos_rotation)
+                A_rotation_matrix = R.from_euler("XYZ", A_pos_rotation, degrees = True)
+                print("A_rotation_matrix : ", A_rotation_matrix.as_matrix())
+                T_rotation_matrix = R.from_euler("XYZ", T_pos_rotation, degrees = True)
+                print("T_rotation_matrix : ", T_rotation_matrix.as_matrix())
+                # target_matrix * T_rotation_matrix = A_rotation_matrix
+                # so -> target_matrix = A_rotation_matrix * T_rotation_matrix.inv()
+                Q_this_joint = A_rotation_matrix * T_rotation_matrix.inv()
+                Q_matrix_this_frame.append(
+                    {
+                        "joint_name" : joint_name,
+                        "Q_matrix" : Q_this_joint
+                    }
+                )
+            Q_matrix_all_frame.append(Q_matrix_this_frame)
+        return Q_matrix_all_frame
+    
+    def find_node(self, node_list : list, joint_name : str):
+        for node in node_list:
+            if(node.name == joint_name):
+                return node
+
+    def find_Q(self, Q_matrix : list , joint_name : str):
+        for Q in Q_matrix:
+            if(Q['joint_name'] == joint_name):
+                return Q['Q_matrix']
+
+    # for root node -> Rotation_in_A_pos = Rotation_in_T_pos * Q(from_T_pos_to_A_pos)^T
+    # for none root node -> Rotation_in_A_pos = Q(parent_from_T_pos_to_A_pos) * Rotation_in_T_pos * Q(this_joint_from_T_pos_to_A_pos)
+
+    def motion_retarget(self, Q_matrix : list, T_pos_all_frames : list, node_list_in_A_pos : list, node_list_in_T_pos : list) -> list:
+        # input : rotation_in_A_pos_all_frames,
+        #         tranformation_matrix_from_T_pos_to_A_pos
+        #         rotation_in_T_pos_all_frames
+        # output : retargeting_motion_from_A_pos_to_T_pos_all_frames
+        all_frame_new_rotation_in_T_pos = []
+        for idx, T_pos_frame in enumerate(T_pos_all_frames):
+            this_T_pos_frame = T_pos_frame
+            this_frame_all_Q_matrix = Q_matrix[idx]
+            this_frame_new_rotation_in_T_pos = []
+            for idx_joint, Q_matrix in enumerate(this_frame_all_Q_matrix):
+                joint_name = Q_matrix['joint_name']
+                Q_matrix_this_joint = Q_matrix['Q_matrix']
+                this_joint_rotation_in_T_pos = this_T_pos_frame[3 + 3 * idx_joint : 6 + 3 * idx_joint]
+                joint_node_in_A_pos = self.find_node(node_list_in_A_pos, joint_name)
+                joint_parent_name = joint_node_in_A_pos.parent['parent_name'] 
+                parent_Q_matrix = self.find_Q(this_frame_all_Q_matrix, joint_parent_name)
+                if(joint_node_in_A_pos.type == 'root'):
+                    # this is a root node
+                    B_rotation = this_joint_rotation_in_T_pos * Q_matrix_this_joint.T
+                    this_frame_new_rotation_in_T_pos.append(B_rotation)
+                    continue
+                else:
+                    B_rotation = parent_Q_matrix * this_joint_rotation_in_T_pos * Q_matrix_this_joint.T
+                    this_frame_new_rotation_in_T_pos.append(B_rotation)
+            all_frame_new_rotation_in_T_pos.append(this_frame_new_rotation_in_T_pos) 
+        return all_frame_new_rotation_in_T_pos
 
 
 def __main__():
