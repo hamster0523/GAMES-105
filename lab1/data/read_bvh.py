@@ -388,15 +388,17 @@ class Bone_Tree:
             new_A_pos_every_frame = []
             new_A_pos_every_frame.append(A_pos_every_frame[0 : 3])
             for T_pos_every_joint_name in T_pos_joint_name_without_end:
-                print(T_pos_every_joint_name)
+                # print(T_pos_every_joint_name)
                 this_T_pos_joint_name = T_pos_every_joint_name
                 index_in_A_pos_name = A_pos_joint_name_without_end.index(this_T_pos_joint_name)
-                print(index_in_A_pos_name)
+                # print(index_in_A_pos_name)
                 # index this frame rotation
                 this_joint_A_pos_rotation = A_pos_every_frame[3 + index_in_A_pos_name * 3 : 6 + index_in_A_pos_name * 3]
                 new_A_pos_every_frame.append(this_joint_A_pos_rotation)
             new_frame_info.append(new_A_pos_every_frame)
-        new_frame_info = np.array(new_frame_info).reshape(-1, 63).tolist()
+        # 3 translate + len(T_pos_joint_name_without_end) * 3 rotation XYZ
+        one_frame_info_len = len(T_pos_joint_name_without_end) * 3 + 3
+        new_frame_info = np.array(new_frame_info).reshape(-1, one_frame_info_len).tolist()
         return new_frame_info
 
 
