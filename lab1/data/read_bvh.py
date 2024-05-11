@@ -30,18 +30,20 @@ class Bone_Tree:
         self.sorted_joint_list = self.sort_primary_joint_list(self.joint_List)
         self.channels = self.process_channels(self.all_channels)
         self.joint_name = self.process_joint_name(self.sorted_joint_list)
-        self.joint_name_without_end = self.process_joint_name_without_end(self.sorted_joint_list)
+        self.joint_name_without_end = self.process_joint_name_without_end(
+            self.sorted_joint_list
+        )
         self.joint_offset = np.array(self.process_joint_offset(self.sorted_joint_list))
         self.joint_parent = self.process_joint_parent(self.sorted_joint_list)
         self.all_frame_rotation_location_dic = self.forward_kinematics(
             self.sorted_joint_list, self.frames
         )
-        self.all_frame_rotation = np.array(self.Process_all_frames_rotation(
-            self.all_frame_rotation_location_dic
-        ))
-        self.all_frame_location = np.array(self.Process_all_frames_location(
-            self.all_frame_rotation_location_dic
-        ))
+        self.all_frame_rotation = np.array(
+            self.Process_all_frames_rotation(self.all_frame_rotation_location_dic)
+        )
+        self.all_frame_location = np.array(
+            self.Process_all_frames_location(self.all_frame_rotation_location_dic)
+        )
 
     def read_bvh(self, file_path) -> None:
         bvh_data = []
@@ -217,11 +219,11 @@ class Bone_Tree:
         for joint in joint_list:
             name_list.append(joint.name)
         return name_list
-    
+
     def process_joint_name_without_end(self, sorted_joint_list):
         name_list = []
         for joint in sorted_joint_list:
-            if joint.type == 'End':
+            if joint.type == "End":
                 continue
             name_list.append(joint.name)
         return name_list
@@ -345,19 +347,19 @@ class Bone_Tree:
                     this_joint_location = parent_location + R.from_quat(
                         parent_rotation
                     ).apply(np.array(this_offset))
-                    #Q.append(
+                    # Q.append(
                     #    {
                     #        "id": joint.ID,
                     #        "rotation": None,
                     #        "location": this_joint_location,
                     #    }
-                    #)
+                    # )
                     # set all end joint's rotation is the rotation of parent joint
                     Q.append(
                         {
-                        "id" : joint.ID,
-                        "rotation" : parent_rotation,
-                        "location" : this_joint_location
+                            "id": joint.ID,
+                            "rotation": parent_rotation,
+                            "location": this_joint_location,
                         }
                     )
             joint_all_frames_info_rotation_local.append(Q)
@@ -380,31 +382,46 @@ class Bone_Tree:
                 one_frame_location.append(joint["location"].tolist())
             all_frames_location.append(one_frame_location)
         return all_frames_location
-    
+
     # target : process A pos frame which goal is the joint name in A pos and T pos is the same sequence
-    def process_A_pos_frame(self, A_pos_frame : list, T_pos_joint_name_without_end : list, A_pos_joint_name_without_end : list) -> list:
-        # input : every frame in A_pos and T pos joint name 
+    def process_A_pos_frame(
+        self,
+        A_pos_frame: list,
+        T_pos_joint_name_without_end: list,
+        A_pos_joint_name_without_end: list,
+    ) -> list:
+        # input : every frame in A_pos and T pos joint name
         new_frame_info = []
         for A_pos_every_frame in A_pos_frame:
             new_A_pos_every_frame = []
-            new_A_pos_every_frame.append(A_pos_every_frame[0 : 3])
+            new_A_pos_every_frame.append(A_pos_every_frame[0:3])
             for T_pos_every_joint_name in T_pos_joint_name_without_end:
                 # print(T_pos_every_joint_name)
                 this_T_pos_joint_name = T_pos_every_joint_name
-                index_in_A_pos_name = A_pos_joint_name_without_end.index(this_T_pos_joint_name)
+                index_in_A_pos_name = A_pos_joint_name_without_end.index(
+                    this_T_pos_joint_name
+                )
                 # print(index_in_A_pos_name)
                 # index this frame rotation
-                this_joint_A_pos_rotation = A_pos_every_frame[3 + index_in_A_pos_name * 3 : 6 + index_in_A_pos_name * 3]
+                this_joint_A_pos_rotation = A_pos_every_frame[
+                    3 + index_in_A_pos_name * 3 : 6 + index_in_A_pos_name * 3
+                ]
                 new_A_pos_every_frame.append(this_joint_A_pos_rotation)
             new_frame_info.append(new_A_pos_every_frame)
         # 3 translate + len(T_pos_joint_name_without_end) * 3 rotation XYZ
         one_frame_info_len = len(T_pos_joint_name_without_end) * 3 + 3
-        new_frame_info = np.array(new_frame_info).reshape(-1, one_frame_info_len).tolist()
+        new_frame_info = (
+            np.array(new_frame_info).reshape(-1, one_frame_info_len).tolist()
+        )
         return new_frame_info
-    
+
     # target : calculate all Q matrix : which is global orientation offset : transform T pos to A pos
-    def calculate_Q_matrix(self, A_pos_frame : list, T_pos_frame : list, joint_name : list) -> list:
-        Q_matrix_all_frame = [] # -> dict : {joint_name : Q_matrix} -> shape:(num_frames, num_joints)
+    def calculate_Q_matrix(
+        self, A_pos_frame: list, T_pos_frame: list, joint_name: list
+    ) -> list:
+        Q_matrix_all_frame = (
+            []
+        )  # -> dict : {joint_name : Q_matrix} -> shape:(num_frames, num_joints)
         for A_pos_frame_this, T_pos_frame_this in zip(A_pos_frame, T_pos_frame):
             Q_matrix_this_frame = []
             # print(joint_name)
@@ -413,38 +430,41 @@ class Bone_Tree:
                 # print("A_pos_rotation : ", A_pos_rotation)
                 T_pos_rotation = T_pos_frame_this[3 + idx * 3 : 6 + idx * 3]
                 # print("T_pos_rotation : ", T_pos_rotation)
-                A_rotation_matrix = R.from_euler("XYZ", A_pos_rotation, degrees = True)
+                A_rotation_matrix = R.from_euler("XYZ", A_pos_rotation, degrees=True)
                 # print("A_rotation_matrix : ", A_rotation_matrix.as_matrix())
-                T_rotation_matrix = R.from_euler("XYZ", T_pos_rotation, degrees = True)
+                T_rotation_matrix = R.from_euler("XYZ", T_pos_rotation, degrees=True)
                 # print("T_rotation_matrix : ", T_rotation_matrix.as_matrix())
                 # target_matrix * T_rotation_matrix = A_rotation_matrix
                 # so -> target_matrix = A_rotation_matrix * T_rotation_matrix.inv()
                 Q_this_joint = A_rotation_matrix * T_rotation_matrix.inv()
                 Q_matrix_this_frame.append(
-                    {
-                        "joint_name" : joint,
-                        "Q_matrix" : Q_this_joint
-                    }
+                    {"joint_name": joint, "Q_matrix": Q_this_joint}
                 )
             Q_matrix_all_frame.append(Q_matrix_this_frame)
         return Q_matrix_all_frame
-    
+
     # depend on parent_name to find parent_Q_matrix
-    def find_node(self, node_list : list, joint_name : str):
+    def find_node(self, node_list: list, joint_name: str):
         for node in node_list:
-            if(node.name == joint_name):
+            if node.name == joint_name:
                 return node
 
     # depende on joint_name to find this_joint_Q_matrix
-    def find_Q(self, Q_matrix : list , joint_name : str):
+    def find_Q(self, Q_matrix: list, joint_name: str):
         for Q in Q_matrix:
-            if(Q['joint_name'] == joint_name):
-                return Q['Q_matrix']
+            if Q["joint_name"] == joint_name:
+                return Q["Q_matrix"]
 
     # for root node -> Rotation_in_A_pos = Rotation_in_T_pos * Q(from_T_pos_to_A_pos)^T
     # for none root node -> Rotation_in_A_pos = Q(parent_from_T_pos_to_A_pos) * Rotation_in_T_pos * Q(this_joint_from_T_pos_to_A_pos)
     # target : retargeting motion from A pos to T pos
-    def motion_retarget(self, Q_matrix : list, T_pos_all_frames : list, node_list_in_A_pos : list, node_list_in_T_pos : list) -> list:
+    def motion_retarget(
+        self,
+        Q_matrix: list,
+        T_pos_all_frames: list,
+        node_list_in_A_pos: list,
+        node_list_in_T_pos: list,
+    ) -> list:
         # input : rotation_in_A_pos_all_frames,
         #         tranformation_matrix_from_T_pos_to_A_pos
         #         rotation_in_T_pos_all_frames
@@ -459,27 +479,146 @@ class Bone_Tree:
             # print(this_frame_all_Q_matrix)
             this_frame_new_rotation_in_T_pos = []
             for idx_joint, one_Q_matrix in enumerate(this_frame_all_Q_matrix):
-                joint_name = one_Q_matrix['joint_name']
-                Q_matrix_this_joint = one_Q_matrix['Q_matrix']
-                this_joint_rotation_in_T_pos = this_T_pos_frame[3 + 3 * idx_joint : 6 + 3 * idx_joint]
+                joint_name = one_Q_matrix["joint_name"]
+                Q_matrix_this_joint = one_Q_matrix["Q_matrix"]
+                this_joint_rotation_in_T_pos = this_T_pos_frame[
+                    3 + 3 * idx_joint : 6 + 3 * idx_joint
+                ]
                 joint_node_in_A_pos = self.find_node(node_list_in_A_pos, joint_name)
-                joint_parent_name = joint_node_in_A_pos.parent['parent_name'] 
-                parent_Q_matrix = self.find_Q(this_frame_all_Q_matrix, joint_parent_name)
-                if(joint_node_in_A_pos.type == 'root'):
+                joint_parent_name = joint_node_in_A_pos.parent["parent_name"]
+                parent_Q_matrix = self.find_Q(
+                    this_frame_all_Q_matrix, joint_parent_name
+                )
+                if joint_node_in_A_pos.type == "root":
                     # this is a root node
                     # print("this_joint_rotation_in_T_pos: ", this_joint_rotation_in_T_pos)
                     # print("Q_matrix_this_joint: ", Q_matrix_this_joint.as_matrix())
                     # add T_pos translation to the new_frame_info
-                    this_frame_new_rotation_in_T_pos.append(this_T_pos_frame[0 : 3])
-                    B_rotation = R.from_euler("XYZ", this_joint_rotation_in_T_pos, degrees = True).as_matrix() * Q_matrix_this_joint.as_matrix().transpose()
-                    this_frame_new_rotation_in_T_pos.append(R.from_matrix(B_rotation).as_euler("XYZ", degrees = True).tolist())
+                    this_frame_new_rotation_in_T_pos.append(this_T_pos_frame[0:3])
+                    B_rotation = (
+                        R.from_euler(
+                            "XYZ", this_joint_rotation_in_T_pos, degrees=True
+                        ).as_matrix()
+                        * Q_matrix_this_joint.as_matrix().transpose()
+                    )
+                    this_frame_new_rotation_in_T_pos.append(
+                        R.from_matrix(B_rotation).as_euler("XYZ", degrees=True).tolist()
+                    )
                     continue
                 else:
-                    B_rotation = parent_Q_matrix.as_matrix() * R.from_euler("XYZ", this_joint_rotation_in_T_pos, degrees = True).as_matrix() * Q_matrix_this_joint.as_matrix().transpose()
-                    this_frame_new_rotation_in_T_pos.append(R.from_matrix(B_rotation).as_euler("XYZ", degrees = True).tolist())
-            all_frame_new_rotation_in_T_pos.append(np.array(this_frame_new_rotation_in_T_pos).reshape(-1, len(this_T_pos_frame)).tolist()) 
+                    B_rotation = (
+                        parent_Q_matrix.as_matrix()
+                        * R.from_euler(
+                            "XYZ", this_joint_rotation_in_T_pos, degrees=True
+                        ).as_matrix()
+                        * Q_matrix_this_joint.as_matrix().transpose()
+                    )
+                    this_frame_new_rotation_in_T_pos.append(
+                        R.from_matrix(B_rotation).as_euler("XYZ", degrees=True).tolist()
+                    )
+            all_frame_new_rotation_in_T_pos.append(
+                np.array(this_frame_new_rotation_in_T_pos)
+                .reshape(-1, len(this_T_pos_frame))
+                .tolist()
+            )
         return np.array(all_frame_new_rotation_in_T_pos).squeeze().tolist()
-                     
+
+    def get_path_from_Ajoint_To_Bjoint(
+        self, A_joint_name: str, B_joint_name: str
+    ) -> list:
+        # input : A_joint_name, B_joint_name
+        # output : a path from A_joint to B_joint
+        # path is des as path_joint_index  + path_joint_name
+
+        try:
+            A_joint_Node = self.find_node(self.sorted_joint_list, A_joint_name)
+            B_joint_Node = self.find_node(self.sorted_joint_list, B_joint_name)
+        except:
+            if A_joint_Node == None or B_joint_Node == None:
+                raise ValueError("joint name not found in sorted_joint_list")
+
+        if A_joint_Node.type == "joint" or B_joint_Node.type == "joint":
+            return None
+
+        if A_joint_Node.type == "End" and B_joint_Node.type == "root":
+            path1 = [self.joint_name.index(A_joint_name)]
+            path1_name = [A_joint_name]
+            while self.joint_parent[path1[-1]] != -1:
+                path1.append(self.joint_parent[path1[-1]])
+                path1_name.append(self.joint_name[path1[-1]])
+            return path1, path1_name
+
+        if A_joint_Node.type == "root" and B_joint_Node.type == "End":
+            path2 = [self.joint_name.index(B_joint_name)]
+            path2_name = [B_joint_name]
+            while self.joint_parent[path2[-1]] != -1:
+                path2.append(self.joint_parent[path2[-1]])
+                path2_name.append(self.joint_name[path2[-1]])
+            return path2, path2_name
+
+        if A_joint_Node.type == "End" and B_joint_Node.type == "End":
+            path1 = [self.joint_name.index(A_joint_name)]
+            path1_name = [A_joint_name]
+            while self.joint_parent[path1[-1]] != -1:
+                path1.append(self.joint_parent[path1[-1]])
+                path1_name.append(self.joint_name[path1[-1]])
+            path2 = [self.joint_name.index(B_joint_name)]
+            path2_name = [B_joint_name]
+            while self.joint_parent[path2[-1]] != -1:
+                path2.append(self.joint_parent[path2[-1]])
+                path2_name.append(self.joint_name[path2[-1]])
+            return [path1, path2], [path1_name, path2_name]
+
+        # find common joint both in A_path and B_path
+        # if A_joint_name is end joint, B_joint_name is RootJoint -> both the pathA and PathB all the same
+        # if A_joint_name is end joint, B_joint_name is another end joint -> both the PathA and PathB just RootJoint same
+        # choice : A_joint_name is end + B_joint_name is end -> both return
+        #          A_joint_name is end + B_joint_name is RootJoint -> return A_path
+        #          A_joint_name is end + B_joint_name is another_joint -> No this path
+        #          A_joint_name is RootJoint + B_joint_name is RootJoint -> No return
+        #          A_joint_name is RootJoint + B_joint_name is another_joint -> No return
+        #          A_joint_name is RootJoint + B_joint_name is end -> path from B_joint to A_joint
+        #          if A_joint_name or B_joint_name is not (end and RootJoint) -> No return
+
+    def get_bone_tree_primary_positions_rotations_from_AJoint_To_BJoint(
+        self, path_info: list
+    ) -> list:
+        """
+        only one path -> return primary positions + rotations
+        if   two path -> return primary positions1 + positions2 + rotations1 + rotations2
+        """
+        path_index = path_info[0]
+
+        fisrt_frame_location = self.all_frame_location[0]
+        fisrt_frame_rotation = self.all_frame_rotation[0]
+
+        primary_positions = []
+        primary_rotations = []
+        if len(path_index) != 2:
+            # only one path
+            for index in path_index:
+                primary_positions.append(fisrt_frame_location[index])
+                primary_rotations.append(fisrt_frame_rotation[index])
+            return primary_positions, primary_rotations
+        elif len(path_index) == 2:
+            path1 = path_index[0]
+            path2 = path_index[1]
+            position = []
+            rotation = []
+            for index in path1:
+                position.append(fisrt_frame_location[index])
+                rotation.append(fisrt_frame_rotation[index])
+            primary_positions.append(position)
+            primary_rotations.append(rotation)
+            position = []
+            rotation = []
+            for index in path2:
+                position.append(fisrt_frame_location[index])
+                rotation.append(fisrt_frame_rotation[index])
+            primary_positions.append(position)
+            primary_rotations.append(rotation)
+
+            return primary_positions, primary_rotations
 
 
 def __main__():
