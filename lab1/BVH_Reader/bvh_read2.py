@@ -620,7 +620,124 @@ class Bone_Tree:
 
             return primary_positions, primary_rotations
 
-    
+    def motion_retarget_one_Q(
+        self,
+        Q_matrix: list,
+        A_pos_all_frames: list,
+        node_list_in_A_pos: list,
+        node_list_in_T_pos: list,
+    ) -> list:
+        # this Q_matrix is transform from T_pos to A_pos
+        # just transpose to get Q_matrix from A_pos to T_pos
+        # now we want to retarget all A_pos_frames to T_pos_frames
+        # left is A_pos_frames , right is T_pos_frames
+        # now we hava trasnformation matrix from T_pos to A_pos
+        # new_A_pos_frame = Q_matrix{from T_pos to A_pos}_parent * A_pos_frame_rotation * Q_matrix{from T_pos_to_A_Pos}_this_joint.transpose()
+        # @ equal to Q_matrix{from A_pos_to_T_pos}_parent.transpose() * A_pos_frame_rotation * Q_matrix{from A_pos_to_T_pos}_this_joint.transpose().transpose()
+        # if root: new_A_pos_frame = A_pos_frame_rotation * Q_matrix{from_T_pos_to_A_pos}_this_joint.transpose()
+        # @ equal to A_pos_frame_rotation * Q_matrix{from_T_pos_to_A_pos}_this_joint.transpose().transpose()
+        all_frame_new_rotation_in_A_pos = []
+        # retaget we just use one Q matrix to retarget all A_pos frames
+        # just use start pos Q_matrix to retarget
+        Q_matrix_start_pos = Q_matrix[0]
+        for idx, A_pos_frame in enumerate(A_pos_all_frames):
+            this_A_pos_frame = A_pos_frame
+            this_frame_all_Q_matrix = Q_matrix_start_pos
+            this_frame_new_rotation_in_A_pos = []
+            for idx_joint, one_Q_matrix in enumerate(this_frame_all_Q_matrix):
+                joint_name = one_Q_matrix["joint_name"]
+                Q_matrix_this_joint = one_Q_matrix["Q_matrix"]
+                this_joint_rotation_in_A_pos = this_A_pos_frame[
+                    3 + 3 * idx_joint : 6 + 3 * idx_joint
+                ]
+                joint_node_in_A_pos = self.find_node(node_list_in_A_pos, joint_name)
+                joint_parent_name = joint_node_in_A_pos.parent["parent_name"]
+                parent_Q_matrix = self.find_Q(
+                    this_frame_all_Q_matrix, joint_parent_name
+                )
+                if joint_node_in_A_pos.type == "root":
+                    this_frame_new_rotation_in_A_pos.append(this_A_pos_frame[0:3])
+                    B_rotation = (
+                        R.from_euler(
+                            "XYZ", this_joint_rotation_in_A_pos, degrees=True
+                        ).as_matrix()
+                        * Q_matrix_this_joint.as_matrix()
+                    )
+                    this_joint_rotation_in_A_pos.append(
+                        R.from_matrix(B_rotation).as_euler("XYZ", degrees=True).tolist()
+                    )
+                    continue
+                else:
+                    B_rotation = (
+                        parent_Q_matrix.as_matrix().transpose()
+                        * R.from_euler(
+                            "XYZ", this_joint_rotation_in_A_pos, degrees=True
+                        ).as_matrix()
+                        * Q_matrix_this_joint.as_matrix()
+                    )
+                    this_frame_new_rotation_in_A_pos.append(
+                        R.from_matrix(B_rotation).as_euler("XYZ", degrees=True).tolist()
+                    )
+            all_frame_new_rotation_in_A_pos.append(
+                np.array(this_frame_new_rotation_in_A_pos)
+                .reshape(-1, len(this_A_pos_frame))
+                .tolist()
+            )
+        return np.array(all_frame_new_rotation_in_A_pos).squeeze().tolist()
+
+    def motion_retarget_just_change(
+        self,
+        A_tree: Bone_Tree,
+        B_tree: Bone_Tree,
+    ):
+        T_joint_name = A_tree.joint_name
+        A_joint_name = B_tree.joint_name
+
+        A_motion_data = np.array(A_tree.frames)
+
+        A_joint_map = {}
+        count = 0
+        for i in range(len(A_joint_name)):
+            if "_end" in A_joint_name[i]:
+                count += 1
+            A_joint_map[A_joint_name[i]] = i - count
+
+        new_motion_data = []
+        # just multiply in some special joint
+        for i in range(A_motion_data.shape[0]):
+            data = []
+            for joint in T_joint_name:
+                index = A_joint_map[joint]
+                if joint == "RootJoint":
+                    data += list(A_motion_data[i][0:6])
+                elif joint == "lShoulder":
+                    Rot = (
+                        R.from_euler(
+                            "XYZ",
+                            list(A_motion_data[i][index * 3 + 3 : index * 3 + 6]),
+                            degrees=True,
+                        )
+                        * R.from_euler("XYZ", [0.0, 0.0, -45.0], degrees=True)
+                    ).as_euler("XYZ", True)
+                    data += list(Rot)
+                elif joint == "rShoulder":
+                    Rot = (
+                        R.from_euler(
+                            "XYZ",
+                            list(A_motion_data[i][index * 3 + 3 : index * 3 + 6]),
+                            degrees=True,
+                        )
+                        * R.from_euler("XYZ", [0.0, 0.0, 45.0], degrees=True)
+                    ).as_euler("XYZ", True)
+                    data += list(Rot)
+                elif "_end" in joint:
+                    continue
+                else:
+                    data += list(A_motion_data[i][index * 3 + 3 : index * 3 + 6])
+            new_motion_data.append(np.array(data).reshape(1, -1))
+
+        return np.array(new_motion_data).squeeze()
+
 
 def __main__():
     pass
