@@ -1,0 +1,7 @@
+1. 输入：就是一个BVH文件的目录
+2. 后续会自动完成BVH文件的解析，以及BVH树的构建
+3. 读取数据之后可以自动完成前向计算：会将所有关机的全局位置，以及朝向保存在树下的`all_frame_location`以及`all_frame_rotation`中
+4. 调用函数`motion_retarget_just_change`仅仅可以计算完成作业中重定位的要求，对于两个动捕数据，其帧数是不一致的，想要完全重定位不知道怎么弄，现在仅仅在`motion_retarget`中完成一个从高帧到低帧动捕数据的重定位，也就是利用了两个数据之间的旋转信息，计算了每帧的旋转矩阵，利用函数`calculate_Q_matrix`完成
+5.`get_bone_tree_primary_positions_rotations_from_AJoint_To_BJoint`用于返回将两个骨骼系统的每个关节的旋转统一起来，也就是其中一个按照另一个的名字，将关节的旋转进行重排序
+6. `get_path_from_Ajoint_To_Bjoint` 用于返回从一个关节到另一个关节的一条可行的路径，如果两个目标关节都不是RootJoint，那么会返回两条路径
+7. 具体读取bvh文件的方法，可以参考内部函数`read_bvh`

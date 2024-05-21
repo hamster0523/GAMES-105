@@ -158,48 +158,50 @@ def inverse_kinematics(
 
 
 def inverse_kinematic_test(meta_data, joint_positions, joint_orientations, target_pos) -> list:
+   # first get all needed info
    joint_parent = meta_data.joint_parent
    joint_offset = [
-       meta_data.joint_inital_positions[i] - meta_data.joint_inital_positions[joint_parent[i]]
+       meta_data.joint_initial_position[i] - meta_data.joint_initial_position[joint_parent[i]]
        for i in range(len(joint_positions))
    ]
-   joint_offset = np.array([0, 0, 0])
+   joint_offset[0] = np.array([0, 0, 0])
    joint_ik_path, _, _, _ = meta_data.get_path_from_root_to_end()
-   # evety joint rotations
    local_rotation = [
-       R.from_quat(joint_orientations[joint_parent[i]]).inv() @ R.from_quat(joint_orientations[i])
+       R.from_quat(joint_orientations[joint_parent[i]]).inv() * \
+           R.from_quat(joint_orientations[i])
        for i in range(len(joint_orientations))
    ]
    local_rotation[0] = R.from_quat(joint_orientations[0])
-   #gradient descent
-   joint_offset_tensor = [torch.tensor(data) for data in joint_offset]
-   joint_positions_tensor = [torch.tensor(data) for data in joint_positions]
-   joint_orientations_tensor = [
-       torch.tensor(R.from_quat(data).as_matrix(), requires_grad = True)
+   # all needed info is like
+   '''
+   
+   '''
+   
+   
+   
+   # process all needed info into torch tensor
+   joint_offset_t = [
+       torch.tensor(data)
+       for data in joint_offset
+   ]
+   joint_positions_t = [
+       torch.tensor(data)
+       for data in joint_positions
+   ]
+   joint_orientations_t = [
+       torch.tensor(data)
        for data in joint_orientations
    ]
-   local_rotation_tensor = [
-       torch.tensor(data.as_matrix(), requires_grad = True)
+   joint_rotation_t = [
+       torch.tensor(data)
        for data in local_rotation
    ]
-   target_pos_tensor = torch.tensor(target_pos, requires_grad = True)
+   target_pos_t = torch.tensor(target_pos)
    
-   eppchs = 300
-   learning_rate = 0.01
-   for _ in range(eppchs):
-       for j in len(joint_ik_path):
-           # Update every joint position
-           a = chain_current = joint_ik_path[j]
-           b = chain_parent  = joint_ik_path[j - 1]
-           if j == 0:
-               local_rotation_tensor[a] = local_rotation_tensor[a]
-               joint_positions_tensor[a] = joint_positions_tensor[a]
-           elif b == joint_parent[a]:
-               # forward kinematics
-               local_rotation_tensor[a] = joint_orientations_tensor[b] @ \
-                   local_rotation_tensor[a]
-               joint_positions_tensor[a] = joint_positions_tensor[b] + \
-                   joint_offset_tensor[a] @ torch.transpose(joint_orientations_tensor[b], 0, 1)
-           else:
-               # inverse kinematics
-               
+   epochs = 400
+   alpha = 0.01
+   
+   for _ in range(epochs):
+       for j in range(len(joint_ik_path)):
+           
+   
