@@ -72,7 +72,7 @@ def part1_simple(viewer, target_pos):
     # print("joint_end_joint: ", meta_data.end_joint)
     # print(joint_position)
     # print(joint_orientation)
-    joint_position, joint_orientation = part1_inverse_kinematics_2(
+    joint_position, joint_orientation = inverse_kinematics_final(
         meta_data, joint_position, joint_orientation, target_pos
     )
     path, path_name, path1, path2 = meta_data.get_path_from_root_to_end()
@@ -165,7 +165,7 @@ def part2(viewer, bvh_name):
                 self.motion_data,
                 self.current_frame,
             )
-            joint_position, joint_orientation = part2_inverse_kinematics(
+            joint_position, joint_orientation = inverse_kinematics_3(
                 self.meta_data, joint_position, joint_orientation, 0.1, 0.3, 1.4
             )
             viewer.show_pose(self.joint_name, joint_position, joint_orientation)
